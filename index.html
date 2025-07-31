@@ -712,292 +712,414 @@
     </footer>
 
   <script>
-// Tab Management - FIXED VERSION
-function showTab(tabName, clickedElement) {
-    // Hide all tab contents
-    const tabContents = document.querySelectorAll('.tab-content');
-    tabContents.forEach(tab => tab.classList.remove('active'));
-    
-    // Remove active class from all nav tabs
-    const navTabs = document.querySelectorAll('.nav-tab');
-    navTabs.forEach(tab => tab.classList.remove('active'));
-    
-    // Show selected tab content
-    document.getElementById(tabName).classList.add('active');
-    
-    // Add active class to clicked nav tab
-    if (clickedElement) {
-        clickedElement.classList.add('active');
-    }
-}
-
-// Password Management
-const passwords = {
-    channel: 'shakti1985',
-    competitive: 'v1935',
-    seasonal: 'octapr',
-    direct: 'dt2024'
+/* ========= Passwords & Tab Config ========= */
+const PASSWORDS = {
+  channel: 'shakti1985',
+  competitive: 'v1935',
+  seasonal: 'octapr',
+  direct: 'dt2024'
 };
 
-// Channel Conflict Simulation
-function unlockChannelSimulation() {
-    const password = document.getElementById('channel-password').value.toLowerCase();
-    if (password === passwords.channel) {
-        document.getElementById('channel-simulation').classList.add('unlocked');
-        document.querySelector('#channel-conflict .password-form').style.display = 'none';
-    } else {
-        alert('Incorrect password. Please try again.');
+const TAB_CONFIG = {
+  'channel-conflict': {
+    key: 'channel',
+    formSel: '#channel-conflict .password-form',
+    simSel:  '#channel-simulation',
+    passInput: '#channel-password',
+    reset: resetChannelTab,
+    unlock: () => {
+      document.querySelector('#channel-conflict .password-form').style.display = 'none';
+      document.querySelector('#channel-simulation').classList.add('unlocked');
     }
+  },
+  'competitive-response': {
+    key: 'competitive',
+    formSel: '#competitive-response .password-form',
+    simSel:  '#competitive-simulation',
+    passInput: '#competitive-password',
+    reset: resetCompetitiveTab,
+    unlock: () => {
+      document.querySelector('#competitive-response .password-form').style.display = 'none';
+      document.querySelector('#competitive-simulation').classList.add('unlocked');
+    }
+  },
+  'seasonal-planning': {
+    key: 'seasonal',
+    formSel: '#seasonal-planning .password-form',
+    simSel:  '#seasonal-simulation',
+    passInput: '#seasonal-password',
+    reset: resetSeasonalTab,
+    unlock: () => {
+      document.querySelector('#seasonal-planning .password-form').style.display = 'none';
+      document.querySelector('#seasonal-simulation').classList.add('unlocked');
+    }
+  },
+  'direct-sales': {
+    key: 'direct',
+    formSel: '#direct-sales .password-form',
+    simSel:  '#direct-simulation',
+    passInput: '#direct-password',
+    reset: resetDirectTab,
+    unlock: () => {
+      document.querySelector('#direct-sales .password-form').style.display = 'none';
+      document.querySelector('#direct-simulation').classList.add('unlocked');
+    }
+  }
+};
+
+/* ========= Tab Management ========= */
+function showTab(tabName, clickedElement) {
+  // Hide all tab contents
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  // Deactivate all nav tabs
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+  // Activate current
+  const tabEl = document.getElementById(tabName);
+  if (tabEl) tabEl.classList.add('active');
+  if (clickedElement) clickedElement.classList.add('active');
+
+  // If it's a simulation tab, "reload" and ask password each time
+  if (TAB_CONFIG[tabName]) {
+    reloadSimulationTab(tabName);       // Reset state every time
+    promptForPassword(tabName);         // Ask immediately
+  }
+  // Home tab needs no gating
 }
 
+/* ========= Gating Helpers ========= */
+function reloadSimulationTab(tabName) {
+  const cfg = TAB_CONFIG[tabName];
+  if (!cfg) return;
+
+  // Show password form & hide simulation
+  const form = document.querySelector(cfg.formSel);
+  const sim  = document.querySelector(cfg.simSel);
+  if (form) form.style.display = 'block';
+  if (sim)  sim.classList.remove('unlocked');
+
+  // Clear any password input in the form
+  const input = document.querySelector(cfg.passInput);
+  if (input) input.value = '';
+
+  // Reset tab-specific UI (metrics, selections, panels)
+  if (typeof cfg.reset === 'function') cfg.reset();
+}
+
+function promptForPassword(tabName) {
+  const cfg = TAB_CONFIG[tabName];
+  if (!cfg) return;
+
+  // Ask via prompt; if correct, unlock; if not, leave the form visible
+  const entered = window.prompt('Please enter the password for this simulation:');
+  if (entered == null) {
+    // User cancelled; keep the form
+    focusPasswordInput(cfg.passInput);
+    return;
+  }
+  if (entered.toLowerCase().trim() === PASSWORDS[cfg.key]) {
+    cfg.unlock();
+  } else {
+    alert('Incorrect password. You can try again in the form.');
+    focusPasswordInput(cfg.passInput);
+  }
+}
+
+function focusPasswordInput(selector) {
+  const el = document.querySelector(selector);
+  if (el) el.focus();
+}
+
+/* ========= "Access Simulation" Buttons (Form path) ========= */
+function unlockChannelSimulation() {
+  unlockFromForm('channel-conflict');
+}
+function unlockCompetitiveSimulation() {
+  unlockFromForm('competitive-response');
+}
+function unlockSeasonalSimulation() {
+  unlockFromForm('seasonal-planning');
+}
+function unlockDirectSimulation() {
+  unlockFromForm('direct-sales');
+}
+
+function unlockFromForm(tabName) {
+  const cfg = TAB_CONFIG[tabName];
+  if (!cfg) return;
+
+  const input = document.querySelector(cfg.passInput);
+  const val = (input && input.value) ? input.value.toLowerCase().trim() : '';
+  if (val === PASSWORDS[cfg.key]) {
+    cfg.unlock();
+  } else {
+    alert('Incorrect password. Please try again.');
+    focusPasswordInput(cfg.passInput);
+  }
+}
+
+/* ========= Tab-specific Reset Functions ========= */
+function resetChannelTab() {
+  // Clear selected choice buttons inside this tab only
+  document.querySelectorAll('#channel-conflict .choice-btn').forEach(btn => btn.classList.remove('selected'));
+  // Clear result & reset metrics
+  const res = document.getElementById('channel-result-1');
+  if (res) { res.innerHTML = ''; res.classList.remove('show'); }
+  setText('#channel-revenue', '₹0');
+  setText('#channel-satisfaction', '0%');
+  setText('#market-coverage', '0%');
+  setText('#conflict-level', 'Low');
+}
+
+function resetCompetitiveTab() {
+  document.querySelectorAll('#competitive-response .choice-btn').forEach(btn => btn.classList.remove('selected'));
+  setHTML('#competitor-moves', '<p><em>Competitor actions will appear based on your strategy...</em></p>');
+  setText('#market-share', '20%');
+  setText('#competitive-pressure', 'Medium');
+  setText('#profit-margin', '0%');
+  setText('#innovation-lead', 'High');
+}
+
+function resetSeasonalTab() {
+  document.querySelectorAll('#seasonal-planning .choice-btn').forEach(btn => btn.classList.remove('selected'));
+  const res = document.getElementById('seasonal-result');
+  if (res) { res.innerHTML = ''; res.classList.remove('show'); }
+  setText('#inventory-cost', '₹0');
+  setText('#service-level', '0%');
+  setText('#stockout-risk', 'Low');
+  setText('#working-capital', '₹0');
+}
+
+function resetDirectTab() {
+  document.querySelectorAll('#direct-sales .choice-btn').forEach(btn => btn.classList.remove('selected'));
+  const res = document.getElementById('direct-result');
+  if (res) { res.innerHTML = ''; res.classList.remove('show'); }
+  setText('#direct-revenue', '₹0');
+  setText('#customer-acquisition', '₹0');
+  setText('#partner-satisfaction', '0%');
+  setText('#digital-adoption', '0%');
+}
+
+/* ========= Small DOM Utils ========= */
+function setText(sel, v) { const el = document.querySelector(sel); if (el) el.textContent = v; }
+function setHTML(sel, v) { const el = document.querySelector(sel); if (el) el.innerHTML = v; }
+
+/* ========= Existing Simulation Logic (unchanged) ========= */
+// Channel Conflict
 function makeChannelChoice(round, choice) {
-    // Remove selected class from all buttons
-    document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
-    // Add selected class to clicked button
-    event.target.classList.add('selected');
-    
-    const resultPanel = document.getElementById('channel-result-1');
-    let resultHTML = '';
-    
-    switch(choice) {
-        case 'exclusive-dist':
-            resultHTML = `
-                <h4>✅ Distributor Exclusive Strategy Results</h4>
-                <p><strong>Outcome:</strong> Distributors are satisfied and commit to aggressive promotion. However, Krishi Kendras threaten to promote competitor products.</p>
-                <p><strong>Impact:</strong> Strong initial sales through distributor network, but limited farmer reach.</p>
-            `;
-            updateChannelMetrics('₹2.5Cr', '85%', '60%', 'Low');
-            break;
-        case 'exclusive-kendra':
-            resultHTML = `
-                <h4>✅ Krishi Kendra Exclusive Strategy Results</h4>
-                <p><strong>Outcome:</strong> Kendras provide broad farmer access and volume sales. Distributors reduce support for other Shakti products.</p>
-                <p><strong>Impact:</strong> High volume but lower margins due to Kendra pricing pressure.</p>
-            `;
-            updateChannelMetrics('₹3.2Cr', '70%', '85%', 'Medium');
-            break;
-        case 'dual-channel':
-            resultHTML = `
-                <h4>⚖️ Dual Channel Strategy Results</h4>
-                <p><strong>Outcome:</strong> Both channels compete, creating price pressure. Some market confusion about positioning.</p>
-                <p><strong>Impact:</strong> Moderate performance from both channels, ongoing conflict management needed.</p>
-            `;
-            updateChannelMetrics('₹2.8Cr', '60%', '75%', 'High');
-            break;
-        case 'segmented':
-            resultHTML = `
-                <h4>🗺️ Geographic Segmentation Results</h4>
-                <p><strong>Outcome:</strong> Clear territorial boundaries reduce direct competition. Both channels focus on their strengths.</p>
-                <p><strong>Impact:</strong> Balanced approach with good channel satisfaction and market coverage.</p>
-            `;
-            updateChannelMetrics('₹3.0Cr', '80%', '80%', 'Low');
-            break;
-    }
-    
-    resultPanel.innerHTML = resultHTML;
-    resultPanel.classList.add('show');
+  document.querySelectorAll('#channel-conflict .choice-btn').forEach(btn => btn.classList.remove('selected'));
+  if (event && event.target) event.target.classList.add('selected');
+
+  const resultPanel = document.getElementById('channel-result-1');
+  let resultHTML = '';
+
+  switch (choice) {
+    case 'exclusive-dist':
+      resultHTML = `
+        <h4>✅ Distributor Exclusive Strategy Results</h4>
+        <p><strong>Outcome:</strong> Distributors are satisfied and commit to aggressive promotion. However, Krishi Kendras threaten to promote competitor products.</p>
+        <p><strong>Impact:</strong> Strong initial sales through distributor network, but limited farmer reach.</p>
+      `;
+      updateChannelMetrics('₹2.5Cr', '85%', '60%', 'Low');
+      break;
+    case 'exclusive-kendra':
+      resultHTML = `
+        <h4>✅ Krishi Kendra Exclusive Strategy Results</h4>
+        <p><strong>Outcome:</strong> Kendras provide broad farmer access and volume sales. Distributors reduce support for other Shakti products.</p>
+        <p><strong>Impact:</strong> High volume but lower margins due to Kendra pricing pressure.</p>
+      `;
+      updateChannelMetrics('₹3.2Cr', '70%', '85%', 'Medium');
+      break;
+    case 'dual-channel':
+      resultHTML = `
+        <h4>⚖️ Dual Channel Strategy Results</h4>
+        <p><strong>Outcome:</strong> Both channels compete, creating price pressure. Some market confusion about positioning.</p>
+        <p><strong>Impact:</strong> Moderate performance from both channels, ongoing conflict management needed.</p>
+      `;
+      updateChannelMetrics('₹2.8Cr', '60%', '75%', 'High');
+      break;
+    case 'segmented':
+      resultHTML = `
+        <h4>🗺️ Geographic Segmentation Results</h4>
+        <p><strong>Outcome:</strong> Clear territorial boundaries reduce direct competition. Both channels focus on their strengths.</p>
+        <p><strong>Impact:</strong> Balanced approach with good channel satisfaction and market coverage.</p>
+      `;
+      updateChannelMetrics('₹3.0Cr', '80%', '80%', 'Low');
+      break;
+  }
+
+  resultPanel.innerHTML = resultHTML;
+  resultPanel.classList.add('show');
 }
 
 function updateChannelMetrics(revenue, satisfaction, coverage, conflict) {
-    document.getElementById('channel-revenue').textContent = revenue;
-    document.getElementById('channel-satisfaction').textContent = satisfaction;
-    document.getElementById('market-coverage').textContent = coverage;
-    document.getElementById('conflict-level').textContent = conflict;
+  setText('#channel-revenue', revenue);
+  setText('#channel-satisfaction', satisfaction);
+  setText('#market-coverage', coverage);
+  setText('#conflict-level', conflict);
 }
 
-// Competitive Response Simulation
-function unlockCompetitiveSimulation() {
-    const password = document.getElementById('competitive-password').value.toLowerCase();
-    if (password === passwords.competitive) {
-        document.getElementById('competitive-simulation').classList.add('unlocked');
-        document.querySelector('#competitive-response .password-form').style.display = 'none';
-    } else {
-        alert('Incorrect password. Please try again.');
-    }
-}
-
+// Competitive Response
 function makeCompetitiveChoice(strategy) {
-    document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
-    event.target.classList.add('selected');
-    
-    const competitorMoves = document.getElementById('competitor-moves');
-    let movesHTML = '';
-    
-    switch(strategy) {
-        case 'premium-focused':
-            movesHTML = `
-                <p><strong>🏭 Competitor A:</strong> Launches "Enhanced Durability" marketing campaign, offers 20% discount</p>
-                <p><strong>🏭 Competitor B:</strong> Accelerates R&D on ceramic coatings, announces "coming soon" technology</p>
-                <p><strong>🏭 Competitor C:</strong> Partners with major distributors for exclusive shelf space deals</p>
-            `;
-            updateCompetitiveMetrics('18%', 'High', '25%', 'Medium');
-            break;
-        case 'volume-pricing':
-            movesHTML = `
-                <p><strong>🏭 Competitor A:</strong> Matches your pricing, starts price war</p>
-                <p><strong>🏭 Competitor B:</strong> Focuses on premium segment, emphasizes brand heritage</p>
-                <p><strong>🏭 Competitor C:</strong> Introduces economy line to protect market share</p>
-            `;
-            updateCompetitiveMetrics('25%', 'Very High', '15%', 'Low');
-            break;
-        case 'niche-targeting':
-            movesHTML = `
-                <p><strong>🏭 Competitor A:</strong> Ignores niche, focuses on mainstream market</p>
-                <p><strong>🏭 Competitor B:</strong> Develops competing niche products</p>
-                <p><strong>🏭 Competitor C:</strong> Attempts to acquire niche players</p>
-            `;
-            updateCompetitiveMetrics('22%', 'Low', '35%', 'High');
-            break;
-        case 'partnership':
-            movesHTML = `
-                <p><strong>🏭 Competitor A:</strong> Strengthens existing distributor relationships</p>
-                <p><strong>🏭 Competitor B:</strong> Seeks counter-partnerships with OEMs</p>
-                <p><strong>🏭 Competitor C:</strong> Launches direct-to-farmer initiative</p>
-            `;
-            updateCompetitiveMetrics('24%', 'Medium', '30%', 'High');
-            break;
-    }
-    
-    competitorMoves.innerHTML = movesHTML;
+  document.querySelectorAll('#competitive-response .choice-btn').forEach(btn => btn.classList.remove('selected'));
+  if (event && event.target) event.target.classList.add('selected');
+
+  let movesHTML = '';
+
+  switch (strategy) {
+    case 'premium-focused':
+      movesHTML = `
+        <p><strong>🏭 Competitor A:</strong> Launches "Enhanced Durability" marketing campaign, offers 20% discount</p>
+        <p><strong>🏭 Competitor B:</strong> Accelerates R&D on ceramic coatings, announces "coming soon" technology</p>
+        <p><strong>🏭 Competitor C:</strong> Partners with major distributors for exclusive shelf space deals</p>
+      `;
+      updateCompetitiveMetrics('18%', 'High', '25%', 'Medium');
+      break;
+    case 'volume-pricing':
+      movesHTML = `
+        <p><strong>🏭 Competitor A:</strong> Matches your pricing, starts price war</p>
+        <p><strong>🏭 Competitor B:</strong> Focuses on premium segment, emphasizes brand heritage</p>
+        <p><strong>🏭 Competitor C:</strong> Introduces economy line to protect market share</p>
+      `;
+      updateCompetitiveMetrics('25%', 'Very High', '15%', 'Low');
+      break;
+    case 'niche-targeting':
+      movesHTML = `
+        <p><strong>🏭 Competitor A:</strong> Ignores niche, focuses on mainstream market</p>
+        <p><strong>🏭 Competitor B:</strong> Develops competing niche products</p>
+        <p><strong>🏭 Competitor C:</strong> Attempts to acquire niche players</p>
+      `;
+      updateCompetitiveMetrics('22%', 'Low', '35%', 'High');
+      break;
+    case 'partnership':
+      movesHTML = `
+        <p><strong>🏭 Competitor A:</strong> Strengthens existing distributor relationships</p>
+        <p><strong>🏭 Competitor B:</strong> Seeks counter-partnerships with OEMs</p>
+        <p><strong>🏭 Competitor C:</strong> Launches direct-to-farmer initiative</p>
+      `;
+      updateCompetitiveMetrics('24%', 'Medium', '30%', 'High');
+      break;
+  }
+
+  setHTML('#competitor-moves', movesHTML);
 }
 
 function updateCompetitiveMetrics(share, pressure, margin, lead) {
-    document.getElementById('market-share').textContent = share;
-    document.getElementById('competitive-pressure').textContent = pressure;
-    document.getElementById('profit-margin').textContent = margin;
-    document.getElementById('innovation-lead').textContent = lead;
+  setText('#market-share', share);
+  setText('#competitive-pressure', pressure);
+  setText('#profit-margin', margin);
+  setText('#innovation-lead', lead);
 }
 
-// Seasonal Planning Simulation
-function unlockSeasonalSimulation() {
-    const password = document.getElementById('seasonal-password').value.toLowerCase();
-    if (password === passwords.seasonal) {
-        document.getElementById('seasonal-simulation').classList.add('unlocked');
-        document.querySelector('#seasonal-planning .password-form').style.display = 'none';
-    } else {
-        alert('Incorrect password. Please try again.');
-    }
-}
-
+// Seasonal Planning
 function makeSeasonalChoice(strategy) {
-    document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
-    event.target.classList.add('selected');
-    
-    const resultPanel = document.getElementById('seasonal-result');
-    let resultHTML = '';
-    
-    switch(strategy) {
-        case 'heavy-inventory':
-            resultHTML = `
-                <h4>📦 Heavy Inventory Strategy Results</h4>
-                <p><strong>Outcome:</strong> High service levels during peak season, but significant carrying costs.</p>
-                <p><strong>Risk:</strong> Weather variations could leave excess inventory.</p>
-            `;
-            updateSeasonalMetrics('₹45L', '95%', 'Low', '₹2.2Cr');
-            break;
-        case 'just-in-time':
-            resultHTML = `
-                <h4>⚡ Just-in-Time Strategy Results</h4>
-                <p><strong>Outcome:</strong> Lower inventory costs but risk of stockouts during peak demand.</p>
-                <p><strong>Risk:</strong> Production delays could impact customer satisfaction.</p>
-            `;
-            updateSeasonalMetrics('₹15L', '75%', 'High', '₹80L');
-            break;
-        case 'regional-hubs':
-            resultHTML = `
-                <h4>🗺️ Regional Hub Strategy Results</h4>
-                <p><strong>Outcome:</strong> Balanced approach with good responsiveness and moderate costs.</p>
-                <p><strong>Benefit:</strong> Reduced transportation costs and faster delivery.</p>
-            `;
-            updateSeasonalMetrics('₹28L', '88%', 'Medium', '₹1.4Cr');
-            break;
-        case 'pre-orders':
-            resultHTML = `
-                <h4>📋 Pre-Order Campaign Results</h4>
-                <p><strong>Outcome:</strong> Predictable demand and cash flow, but limited flexibility.</p>
-                <p><strong>Benefit:</strong> Strong customer commitment and reduced uncertainty.</p>
-            `;
-            updateSeasonalMetrics('₹20L', '92%', 'Low', '₹1.1Cr');
-            break;
-    }
-    
-    resultPanel.innerHTML = resultHTML;
-    resultPanel.classList.add('show');
+  document.querySelectorAll('#seasonal-planning .choice-btn').forEach(btn => btn.classList.remove('selected'));
+  if (event && event.target) event.target.classList.add('selected');
+
+  const resultPanel = document.getElementById('seasonal-result');
+  let resultHTML = '';
+
+  switch (strategy) {
+    case 'heavy-inventory':
+      resultHTML = `
+        <h4>📦 Heavy Inventory Strategy Results</h4>
+        <p><strong>Outcome:</strong> High service levels during peak season, but significant carrying costs.</p>
+        <p><strong>Risk:</strong> Weather variations could leave excess inventory.</p>
+      `;
+      updateSeasonalMetrics('₹45L', '95%', 'Low', '₹2.2Cr');
+      break;
+    case 'just-in-time':
+      resultHTML = `
+        <h4>⚡ Just-in-Time Strategy Results</h4>
+        <p><strong>Outcome:</strong> Lower inventory costs but risk of stockouts during peak demand.</p>
+        <p><strong>Risk:</strong> Production delays could impact customer satisfaction.</p>
+      `;
+      updateSeasonalMetrics('₹15L', '75%', 'High', '₹80L');
+      break;
+    case 'regional-hubs':
+      resultHTML = `
+        <h4>🗺️ Regional Hub Strategy Results</h4>
+        <p><strong>Outcome:</strong> Balanced approach with good responsiveness and moderate costs.</p>
+        <p><strong>Benefit:</strong> Reduced transportation costs and faster delivery.</p>
+      `;
+      updateSeasonalMetrics('₹28L', '88%', 'Medium', '₹1.4Cr');
+      break;
+    case 'pre-orders':
+      resultHTML = `
+        <h4>📋 Pre-Order Campaign Results</h4>
+        <p><strong>Outcome:</strong> Predictable demand and cash flow, but limited flexibility.</p>
+        <p><strong>Benefit:</strong> Strong customer commitment and reduced uncertainty.</p>
+      `;
+      updateSeasonalMetrics('₹20L', '92%', 'Low', '₹1.1Cr');
+      break;
+  }
+
+  resultPanel.innerHTML = resultHTML;
+  resultPanel.classList.add('show');
 }
 
 function updateSeasonalMetrics(cost, service, risk, capital) {
-    document.getElementById('inventory-cost').textContent = cost;
-    document.getElementById('service-level').textContent = service;
-    document.getElementById('stockout-risk').textContent = risk;
-    document.getElementById('working-capital').textContent = capital;
+  setText('#inventory-cost', cost);
+  setText('#service-level', service);
+  setText('#stockout-risk', risk);
+  setText('#working-capital', capital);
 }
 
-// Direct Sales Simulation
-function unlockDirectSimulation() {
-    const password = document.getElementById('direct-password').value.toLowerCase();
-    if (password === passwords.direct) {
-        document.getElementById('direct-simulation').classList.add('unlocked');
-        document.querySelector('#direct-sales .password-form').style.display = 'none';
-    } else {
-        alert('Incorrect password. Please try again.');
-    }
-}
-
+// Direct Sales
 function makeDirectChoice(strategy) {
-    document.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('selected'));
-    event.target.classList.add('selected');
-    
-    const resultPanel = document.getElementById('direct-result');
-    let resultHTML = '';
-    
-    switch(strategy) {
-        case 'ecommerce-platform':
-            resultHTML = `
-                <h4>🛒 E-commerce Platform Results</h4>
-                <p><strong>Outcome:</strong> Direct customer relationships and higher margins, but high development costs.</p>
-                <p><strong>Challenge:</strong> Building traffic and competing with established platforms.</p>
-            `;
-            updateDirectMetrics('₹1.8Cr', '₹850', '65%', '12%');
-            break;
-        case 'mobile-app':
-            resultHTML = `
-                <h4>📱 Mobile App Results</h4>
-                <p><strong>Outcome:</strong> Strong farmer engagement and loyalty, but slower adoption.</p>
-                <p><strong>Benefit:</strong> Rich user experience and push notification capabilities.</p>
-            `;
-            updateDirectMetrics('₹1.2Cr', '₹1200', '70%', '8%');
-            break;
-        case 'hybrid-model':
-            resultHTML = `
-                <h4>🔄 Hybrid Model Results</h4>
-                <p><strong>Outcome:</strong> Best of both worlds - online discovery, offline fulfillment.</p>
-                <p><strong>Advantage:</strong> Leverages existing distribution while building digital presence.</p>
-            `;
-            updateDirectMetrics('₹2.2Cr', '₹650', '80%', '15%');
-            break;
-        case 'marketplace':
-            resultHTML = `
-                <h4>🏪 Marketplace Partnership Results</h4>
-                <p><strong>Outcome:</strong> Quick market entry and established traffic, but lower margins.</p>
-                <p><strong>Trade-off:</strong> Less control over customer experience and data.</p>
-            `;
-            updateDirectMetrics('₹2.8Cr', '₹400', '75%', '22%');
-            break;
-    }
-    
-    resultPanel.innerHTML = resultHTML;
-    resultPanel.classList.add('show');
+  document.querySelectorAll('#direct-sales .choice-btn').forEach(btn => btn.classList.remove('selected'));
+  if (event && event.target) event.target.classList.add('selected');
+
+  const resultPanel = document.getElementById('direct-result');
+  let resultHTML = '';
+
+  switch (strategy) {
+    case 'ecommerce-platform':
+      resultHTML = `
+        <h4>🛒 E-commerce Platform Results</h4>
+        <p><strong>Outcome:</strong> Direct customer relationships and higher margins, but high development costs.</p>
+        <p><strong>Challenge:</strong> Building traffic and competing with established platforms.</p>
+      `;
+      updateDirectMetrics('₹1.8Cr', '₹850', '65%', '12%');
+      break;
+    case 'mobile-app':
+      resultHTML = `
+        <h4>📱 Mobile App Results</h4>
+        <p><strong>Outcome:</strong> Strong farmer engagement and loyalty, but slower adoption.</p>
+        <p><strong>Benefit:</strong> Rich user experience and push notification capabilities.</p>
+      `;
+      updateDirectMetrics('₹1.2Cr', '₹1200', '70%', '8%');
+      break;
+    case 'hybrid-model':
+      resultHTML = `
+        <h4>🔄 Hybrid Model Results</h4>
+        <p><strong>Outcome:</strong> Best of both worlds - online discovery, offline fulfillment.</p>
+        <p><strong>Advantage:</strong> Leverages existing distribution while building digital presence.</p>
+      `;
+      updateDirectMetrics('₹2.2Cr', '₹650', '80%', '15%');
+      break;
+    case 'marketplace':
+      resultHTML = `
+        <h4>🏪 Marketplace Partnership Results</h4>
+        <p><strong>Outcome:</strong> Quick market entry and established traffic, but lower margins.</p>
+        <p><strong>Trade-off:</strong> Less control over customer experience and data.</p>
+      `;
+      updateDirectMetrics('₹2.8Cr', '₹400', '75%', '22%');
+      break;
+  }
+
+  resultPanel.innerHTML = resultHTML;
+  resultPanel.classList.add('show');
 }
 
 function managePartners(approach) {
-    // This function handles the partner management choices
-    alert(`Partner Management Strategy: ${approach.replace('-', ' ').toUpperCase()} selected. This would be implemented in the full simulation.`);
+  alert(`Partner Management Strategy: ${approach.replace('-', ' ').toUpperCase()} selected. This would be implemented in the full simulation.`);
 }
 
 function updateDirectMetrics(revenue, acquisition, satisfaction, adoption) {
-    document.getElementById('direct-revenue').textContent = revenue;
-    document.getElementById('customer-acquisition').textContent = acquisition;
-    document.getElementById('partner-satisfaction').textContent = satisfaction;
-    document.getElementById('digital-adoption').textContent = adoption;
+  setText('#direct-revenue', revenue);
+  setText('#customer-acquisition', acquisition);
+  setText('#partner-satisfaction', satisfaction);
+  setText('#digital-adoption', adoption);
 }
 </script>
